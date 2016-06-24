@@ -1,16 +1,17 @@
 /**
  * External dependencies
  */
-import React from 'react'
-import analytics from 'lib/analytics'
+import React from 'react';
+import analytics from 'lib/analytics';
 
 /**
  * Internal dependencies
  */
-import StepWrapper from 'signup/step-wrapper'
-import SignupForm from 'components/signup-form'
-import signupUtils from 'signup/utils'
+import StepWrapper from 'signup/step-wrapper';
+import SignupForm from 'components/signup-form';
+import signupUtils from 'signup/utils';
 import SignupActions from 'lib/signup/actions';
+import { abtest } from 'lib/abtest';
 
 export default React.createClass( {
 
@@ -24,14 +25,13 @@ export default React.createClass( {
 		if ( this.props.flowName !== nextProps.flowName || this.props.subHeaderText !== nextProps.subHeaderText ) {
 			this.setSubHeaderText( nextProps );
 		}
-
 	},
 
 	componentWillMount() {
 		this.setSubHeaderText( this.props );
 	},
 
-	setSubHeaderText( props )  {
+	setSubHeaderText( props ) {
 		let subHeaderText = props.subHeaderText;
 
 		/**
@@ -59,6 +59,24 @@ export default React.createClass( {
 			queryArgs.jetpackRedirect = this.props.queryObject.jetpack_redirect;
 		}
 
+		if ( abtest( 'coldStartReader' ) === 'noEmailColdStart' ) {
+    /*
+    * This is the case where the user is having their email settings
+    * set to never and is participating in cold start, so we set
+    * the user to not follow the default blogs, set the subscription
+    * delivery method to 'never' and mark the user with is_new_reader
+    */
+			userData.follow_default_blogs = false;
+			userData.subscription_delivery_email_default = 'never';
+			userData.is_new_reader = true;
+		} else if ( abtest( 'coldStartReader' ) === 'noEmailNoColdStart' ) {
+    /*
+    * This is the case where the user is having their email settings
+    * set to never and is *not* participating in cold start, so we set
+    * the subscription delivery method to 'never'
+    */
+			userData.subscription_delivery_email_default = 'never';
+		}
 		const formWithoutPassword = Object.assign( {}, form, {
 			password: Object.assign( {}, form.password, { value: '' } )
 		} );
@@ -126,7 +144,7 @@ export default React.createClass( {
 				submitForm={ this.submitForm }
 				submitButtonText={ this.submitButtonText() }
 			/>
-		)
+		);
 	},
 
 	render() {
@@ -141,6 +159,6 @@ export default React.createClass( {
 				signupProgressStore={ this.props.signupProgressStore }
 				stepContent={ this.renderSignupForm() }
 			/>
-		)
+		);
 	}
 } );
